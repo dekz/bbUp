@@ -1,0 +1,18 @@
+bbUp
+
+#### Options
+-u upload generated images to IMGUR
+-c move copied files to dirs in config
+
+#### Config File
+config.txt in same directory
+
+apikey=
+announceurl=
+mediainfo=ffprobe
+screengrabber=ffmpeg
+torrentgen=/usr/bin/mktorrent
+moveTorrentTo=/path/to/Torrents
+moveFilesTo=/path/to/torrentfiles
+movieDBAPIKEY=
+
