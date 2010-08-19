@@ -1,10 +1,10 @@
 bbUp
 
-#### Options
+### Options
 -u upload generated images to IMGUR
 -c move copied files to dirs in config
 
-#### Config File
+### Config File
 config.txt in same directory
 
 apikey=
