@@ -1,0 +1,9 @@
+Allow Args
+Allow folders to be given
+Search folder for avi files
+Exclusion list
+Threaded image up - too slow at the moment - Images are around 0.6mb and take a while to write
+Search for meta info from themoviedb/thetvdb
+Scrape meta info from above
+Get total time from ffprobe and get % screen shots
+Remove unneeded jars

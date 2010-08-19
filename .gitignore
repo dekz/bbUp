@@ -1,0 +1,14 @@
+bin/
+*.avi
+*.jpg
+*.jpeg
+*.png
+.project
+.classpath
+.DS_Store
+tmp/
+*.torrent
+target/
+target/*
+*config*
+config.txt
