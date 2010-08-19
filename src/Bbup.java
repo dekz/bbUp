@@ -15,6 +15,8 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
 
+import javax.management.BadBinaryOpValueExpException;
+
 import sun.tools.tree.LengthExpression;
 
 
@@ -40,6 +42,8 @@ public class Bbup
 	public boolean moveFiles = false;
 	public String moveTorrentTo;
 	public String moveFilesTo;
+	public String determinedName;
+	public boolean isMovie = true;
 	
 	public boolean isDir;
 	
@@ -48,10 +52,12 @@ public class Bbup
 	public double duration; //preferably in seconds
 	
 	public VideoFilter filter;
+	private String movieDBAPIKEY;
 	
 	
 	public Bbup(String[] args) 
 	{
+		if (args == null ) return;
 		this.fileName = args[0];
 		load();
 		
@@ -75,8 +81,6 @@ public class Bbup
 		
 		if (args.length == 0) System.out.println("Usage: <filename> <options>");
 		
-
-		
 		Bbup bbup = new Bbup(args);
 		bbup.run();
 		
@@ -98,11 +102,15 @@ public class Bbup
 
 		copyAllFiles();
 		System.out.println("[INFO] File Copy: " + (System.currentTimeMillis() - timer)/1000 + " seconds");
+		
+		NameCompiler nc = new NameCompiler(nameStripped);
+		determinedName = nc.determineName();
+
+		getMetaData(determinedName);
 		buildDescription();
-		
-		
+
 		timer = System.currentTimeMillis();
-		File test = new File(tempFolder.getAbsoluteFile() + File.separator + theFile.getName() );
+
 		ArrayList<String> images = generateAllImages(theFile);
 		if (uploadImages) 
 		{
@@ -112,7 +120,7 @@ public class Bbup
 		}
 		
 		
-		//System.out.println("Generating Torrent File for " + tempFolder.getAbsolutePath());
+		System.out.println("Generating Torrent File for " + tempFolder.getAbsolutePath());
 		generateTorrentFile(tempFolder);
 		
 		if (moveFiles)
@@ -156,35 +164,40 @@ public class Bbup
 		moveTorrentTo = parse("moveTorrentTo=", sb.toString());
 		moveFilesTo = parse("moveFilesTo=", sb.toString());
 		uploader = new Imgur(API_KEY);
+		movieDBAPIKEY = parse("movieDBAPIKEY=", sb.toString());
 		
 
-
+	}
+	
+	
+	public String getMetaData(String name)
+	{
+		StringBuilder sb = new StringBuilder();
+		
+		MovieScraper scraper = new TMDBScraper(name);
+		scraper.setAPIKey(movieDBAPIKEY);
+		scraper.scrape();
+		
+		
+		return sb.toString();
 	}
 	
 	public void setUpFolders()
 	{
 		nameStripped = stripName();
-		//theFile = new File(fileName);
 		System.out.println("[INFO] Name stripped: " + nameStripped);
-		
-	//	mainTemp = new File("tmp" + File.separator);
-		//mainTemp.mkdirs();
-	//	tempFolder = new File(mainTemp.getAbsolutePath() + File.separator + nameStripped + File.separator);
-		
 		System.out.println("[FILE] Temp Folder: " + tempFolder.getAbsolutePath());
 		
 		tempFolder.mkdirs();
 		
 		descriptionFile = new File(mainTemp.getAbsoluteFile() + File.separator + theFile.getName() + ".txt");
-
-		
-		//if (mainTemp.mkdirs() && tempFolder.mkdirs()); //System.out.println("Created tmp dir");
 	}
 
 	public void run()
 	{
 		this.load();
 		this.runTasks();
+		
 	}
 	
 	public File findFile(File f)
@@ -465,7 +478,7 @@ public class Bbup
 			
 			while ((s = stdInput.readLine()) != null) 
 			{
-				//System.out.println(s);
+				System.out.println(s);
 				output.append(s);
 				output.append('\n');
 			}
@@ -524,8 +537,32 @@ public class Bbup
 		StringBuilder sb = new StringBuilder();
 		try 
 		{
-			FileOutputStream fos = new FileOutputStream(descriptionFile);
-			System.out.println("[FILE] Description: " + descriptionFile.getAbsolutePath() + " for " + tempFolder.getAbsolutePath() +  File.separator  + theFile.getName());
+			
+	    	
+	    	NameCompiler nm = new NameCompiler(determinedName);
+	    	String determined = nm.determineName();
+	    	System.out.println("Determined:" + determined);
+	    	FileOutputStream fos = new FileOutputStream(descriptionFile);
+	    	System.out.println("[FILE] Description: " + descriptionFile.getAbsolutePath() + " for " + tempFolder.getAbsolutePath() +  File.separator  + theFile.getName());
+	    	
+	    	MovieScraper ms = new TMDBScraper(determined);
+	    	Movie m = ms.scrape();
+	    	if (m != null)
+	    	{
+	    		System.out.println("[INFO] Video: " + m.getName());
+	    		fos.write(("[b]Name[/b]: " + m.getName() + "\n").getBytes());
+	    		fos.write(("[b]IMDB[/b]: http://www.imdb.com/title/ " + m.getIMDB() + "\n").getBytes());
+	    		fos.write(("[b]Rating[/b]: " + m.getRating() + "\n").getBytes());
+	    		fos.write(("[b]Overview[/b]: " +m.getOverview() + "\n").getBytes());
+	    		fos.write(("[b]Trailer[/b]: " + m.getTrailer()+ "\n").getBytes());
+	    	} else
+	    	{
+	    		System.out.println("[ERR] Unable to find movie info - ensure year is in the title after the name");
+	    	}
+	    	
+			
+			
+			
 			fos.write("[quote]".getBytes());
 			//sb.append(grabMediaInfo(new File(tempFolder.getAbsolutePath() +  File.separator  + theFile.getName())));
 			sb.append(grabMediaInfo(theFile.getAbsoluteFile()));
@@ -567,6 +604,17 @@ public class Bbup
 	{
 		StringBuilder sp = new StringBuilder();
 		String[] parts = fileName.split("\\.");
+		
+		String[] noFolders = parts[0].split("\\/");
+		//parts[0] = parts[0].replace("/", "");
+		return noFolders[noFolders.length-1];
+	}
+	
+	
+	public static String stripName(String s) 
+	{
+		StringBuilder sp = new StringBuilder();
+		String[] parts = s.split("\\.");
 		
 		String[] noFolders = parts[0].split("\\/");
 		//parts[0] = parts[0].replace("/", "");
